@@ -89,7 +89,7 @@ WHERE LENGTH(PROFESSOR_NAME) !=3;
 --과정
 --SELECT SUBSTR(PROFESSOR_SSN, 1 ,INSTR(PROFESSOR_SSN,'-')-1) --주민번호에서 생년월일 추출
 --SELECT TO_DATE (SUBSTR(PROFESSOR_SSN, 1 ,INSTR(PROFESSOR_SSN,'-')-1)) -- 날짜형으로 변환했더니 194n년대 생들이 204n년대생이 됨
-SELECT TO_DATE (19||SUBSTR(PROFESSOR_SSN, 1 ,INSTR(PROFESSOR_SSN,'-')-1)) 나이 -- 날짜형으로 형변환 전에 문자열 앞에 19를 넣어서 해결
+SELECT TO_DATE (19||SUBSTR(PROFESSOR_SSN, 1 ,INSTR(PROFESSOR_SSN,'-')-1)) 나이 -- 날짜형으로 형변환 전에 문자열 앞에 19를 연결 연산자로 붙여줌
 FROM TB_PROFESSOR
 WHERE PROFESSOR_SSN LIKE '_______1%'
 ORDER BY 1;
@@ -100,6 +100,15 @@ TRUNC(MONTHS_BETWEEN(SYSDATE,TO_DATE(19||SUBSTR(PROFESSOR_SSN, 1 ,INSTR(PROFESSO
 FROM TB_PROFESSOR
 WHERE PROFESSOR_SSN LIKE '_______1%'
 ORDER BY 2;
+
+--수업시간 풀이
+SELECT PROFESSOR_NAME,
+--	EXTRACT(YEAR FROM SYSDATE) - 
+--	EXTRACT(YEAR FROM TO_DATE(19||SUBSTR(PROFESSOR_SSN, 1, 6) ) ) -- 만 나이가 아님
+	FLOOR(MONTHS_BETWEEN(SYSDATE, TO_DATE(19||SUBSTR(PROFESSOR_SSN, 1, 6) ) ) /12) 나이 -- 만나이
+FROM TB_PROFESSOR
+WHERE SUBSTR(PROFESSOR_SSN, 8, 1) = '1'
+ORDER BY 나이;
 
 --4. 교수들의 이름 중 성을 제외한 이름만 출력하는 SQL 문장을 작성하시오. 출력 헤더는 "이름"이 찍히도록 한다.
 --(성이 2자인 경우인 교수는 없다고 가정하시오)
@@ -112,14 +121,19 @@ FROM TB_PROFESSOR;
 --과정
 --SELECT SUBSTR(STUDENT_SSN, 1 ,INSTR(STUDENT_SSN,'-')-1) -- 주민번호에서 생년월일 추출
 --SELECT TO_DATE (SUBSTR(STUDENT_SSN, 1 ,INSTR(STUDENT_SSN,'-')-1)) --날짜형으로 형변환
-SELECT STUDENT_NO, STUDENT_NAME,
-TRUNC(MONTHS_BETWEEN (ENTRANCE_DATE,TO_DATE(SUBSTR(STUDENT_SSN, 1 , INSTR(STUDENT_SSN,'-')-1)))/12)+1 --입학시의 나이
-FROM TB_STUDENT;
+--SELECT STUDENT_NO, STUDENT_NAME,
+--TRUNC(MONTHS_BETWEEN (ENTRANCE_DATE,TO_DATE(SUBSTR(STUDENT_SSN, 1 , INSTR(STUDENT_SSN,'-')-1)))/12)+1 --입학시의 나이
+--FROM TB_STUDENT;
+--
+--답안 문제지 답안(204행)과 다르게 나옴 : 246행 -- 만나이가 아니니까 EXTRACT로 풀어야함
+--SELECT STUDENT_NO, STUDENT_NAME
+--FROM TB_STUDENT
+--WHERE TRUNC(MONTHS_BETWEEN (ENTRANCE_DATE,TO_DATE(SUBSTR(STUDENT_SSN, 1 , INSTR(STUDENT_SSN,'-')-1)))/12)+1 > 19
 
---답안 --뭔짓을 해도 문제지 답안(204행)과 다르게 나옴 : 246행
 SELECT STUDENT_NO, STUDENT_NAME
 FROM TB_STUDENT
-WHERE TRUNC(MONTHS_BETWEEN (ENTRANCE_DATE,TO_DATE(SUBSTR(STUDENT_SSN, 1 , INSTR(STUDENT_SSN,'-')-1)))/12)+1 > 19
+WHERE EXTRACT(YEAR FROM ENTRANCE_DATE)
+	- EXTRACT(YEAR FROM TO_DATE(SUBSTR(STUDENT_SSN, 1, 6))) >19
 
 --6. 2020년 크리스마스는 무슨 요일인가?
 
@@ -145,6 +159,11 @@ WHERE STUDENT_NO NOT LIKE 'A%';
 -- 단, 이때 출력 화면의 헤더는 "평점"이라고 찍히게 하고, 점수는 반올림하여 소수점 이하 한 자리까지만 표시한다.
 
 --10. 학과별 학생수를 구하여 "학과번호", "학생수(명)"의 형태로 헤더를 만들어 결과값이 출력되도록 하시오.
+SELECT DEPARTMENT_NO "학과번호", COUNT(*) "학생수(명)"
+FROM TB_STUDENT
+GROUP BY DEPARTMENT_NO
+ORDER BY 1;
+
 
 --11. 지도 교수를 배정받지 못한 학생의 수는 몇 명 정도 되는지 알아내는 SQL문을 작성하시오.
 
@@ -152,10 +171,54 @@ WHERE STUDENT_NO NOT LIKE 'A%';
 -- 단, 이때 출력 화면의 헤더는 "년도", "년도 별 평점" 이라고 찍히게 하고
 -- 점수는 반올림하여 소수점 이하 한 자리까지만 표시한다.
 
+-- 수업시간 풀이
+SELECT SUBSTR(TERM_NO, 1, 4) 년도, ROUND(AVG(POINT), 1) "년도 별 평점"
+FROM TB_GRADE
+WHERE STUDENT_NO = 'A112113'
+GROUP BY SUBSTR(TERM_NO, 1, 4)
+ORDER BY 년도;
+
 --13. 학과 별 휴학생 수를 파악하고자 한다. 학과 번호와 휴학생 수를 표시하는 SQL문장을 작성하시오.
+
+--수업시간 풀이 1
+SELECT DEPARTMENT_NO 학과코드명, 
+	SUM(DECODE (ABSENCE_YN, 'Y', 1, 0) ) "휴학생 수"
+FROM TB_STUDENT
+--WHERE ABSENCE_YN = 'Y'
+GROUP BY DEPARTMENT_NO
+ORDER BY DEPARTMENT_NO;
+
+--수업시간 풀이 2
+SELECT DEPARTMENT_NO 학과코드명, 
+	COUNT( DECODE (ABSENCE_YN, 'Y', 1) ) "휴학생 수"
+FROM TB_STUDENT
+GROUP BY DEPARTMENT_NO
+ORDER BY DEPARTMENT_NO;
+
 
 --14. 춘 대학교에 다니는 동명이인 학생들의 이름을 찾고자 한다.
 -- 어떤 SQL 문장을 사용하면 가능하겠는가?
 
+--수업시간 풀이
+SELECT STUDENT_NAME 동일이름 , COUNT(*) "동명인 수" 
+FROM TB_STUDENT
+GROUP BY STUDENT_NAME
+HAVING COUNT(*) >= 2
+ORDER BY 1;
+
+
 --15. 학번이 A112113인 김고운 학생의 년도, 학기 별 평점과 년도 별 누적 평점, 총 평점을 구하는 SQL 문을 작성하시오.
--- 단, 평점은 소수점 1자리까지만 반올림하여 표시한다.
+-- 단, 평점은 소수점 1자리까지만 반올림하여 표시한다. 
+
+--수업시간 풀이
+SELECT * FROM TB_GRADE;
+
+SELECT NVL(SUBSTR(TERM_NO, 1, 4) , ' ' ) 년도,
+		NVL(SUBSTR(TERM_NO, 5, 2) , ' ' ) 학기,
+		ROUND(AVG(POINT),1) 평점
+FROM TB_GRADE
+WHERE STUDENT_NO = 'A112113'
+GROUP BY ROLLUP(SUBSTR(TERM_NO, 1, 4),
+		SUBSTR(TERM_NO, 5, 2))
+ORDER BY SUBSTR(TERM_NO, 1, 4), SUBSTR(TERM_NO, 5, 2);
+--> ORDER BY 절에 함수 작성 가능!
